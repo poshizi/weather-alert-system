@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model WeatherAlert {
+  id          Int      @id @default(autoincrement())
+  region      String
+  regionCode  String   @map("region_code")
+  publishTime String   @map("publish_time")
+  typeCode    String   @map("type_code")
+  typeName    String   @map("type_name")
+  levelCode   String   @map("level_code")
+  levelName   String   @map("level_name")
+  detailLink  String   @map("detail_link")
+  longitude   String?
+  latitude    String?
+  batchId     String   @map("batch_id")
+  writeTime   DateTime @default(now()) @map("write_time")
+  updateTime  DateTime @updatedAt @map("update_time")
+
+  @@map("alerts")
+}
+
+model UpdateLog {
+  id          Int      @id @default(autoincrement())
+  batchId     String   @unique @map("batch_id")
+  updateTime  DateTime @default(now()) @map("update_time")
+  recordCount Int      @default(0) @map("record_count")
+  status      String   @default("success")
+  message     String?
+
+  @@map("update_log")
+}
+
+model NotificationConfig {
+  id           Int      @id @default(autoincrement())
+  sendKey      String?  @map("sendkey")
+  email        String?
+  smtpHost     String?  @map("smtp_host")
+  smtpPort     Int?     @map("smtp_port")
+  smtpSecure   Boolean? @default(true) @map("smtp_secure")
+  smtpUser     String?  @map("smtp_user")
+  smtpPassword String?  @map("smtp_password")
+  regionCodes  String?  @map("region_codes") // JSON array of region codes
+  levelTypes   String?  @map("level_types")  // JSON array of alert types
+  alertLevels  String?  @map("alert_levels") // JSON array of alert levels
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  notificationLogs NotificationLog[]
+  alertRules AlertRule[]
+
+  @@map("notification_config")
+}
+
+model AlertRule {
+  id           Int      @id @default(autoincrement())
+  configId     Int      @map("config_id")
+  ruleType     String   // 'regional_level', 'level', 'regional'
+  targetLevel  String?  // 目标预警等级 (蓝色, 黄色, 橙色, 红色, 白色) - 向后兼容
+  alertType    String?  // 灾害类型
+  regionCode   String?  // 地区代码 - 向后兼容
+  regionLevel  String?  // 地区级别 (provincial, city)
+  conditions   String? // JSON格式的详细条件，支持多选
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  config NotificationConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+
+  @@map("alert_rules")
+}
+
+model NotificationLog {
+  id      Int      @id @default(autoincrement())
+  configId Int?    @map("config_id")
+  message String
+  sentAt  DateTime @default(now()) @map("sent_at")
+  status  String   @default("sent")
+
+  // Relations
+  config NotificationConfig? @relation(fields: [configId], references: [id])
+
+  @@map("notification_log")
+}
+
+model AlarmInfo {
+  id          Int      @id @default(autoincrement())
+  alarmCode   String   @unique @map("alarm_code")   // 预警代码，如 0401
+  alarmName   String   @map("alarm_name")           // 预警名称，如 "寒潮蓝色预警信号"
+  conditions  String   @map("conditions")           // 预警条件
+  suggestions String   @map("suggestions")          // 预警提示/防护建议
+  typeCode    String   @map("type_code")            // 灾害类型代码，如 04 (寒潮)
+  levelCode   String   @map("level_code")           // 预警等级代码，如 01 (蓝色)
+  typeName    String   @map("type_name")            // 灾害类型名称，如 "寒潮"
+  levelName   String   @map("level_name")           // 预警等级名称，如 "蓝色"
+  enabled     Boolean  @default(true)               // 是否启用
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("alarm_info")
+}
